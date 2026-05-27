@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COVID-19 Perú — Territorios</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+/* ── TERRITORIOS-SPECIFIC ── */
+
+/* Tab selector */
+.tab-bar {
+  display:flex; gap:8px; margin-bottom:1.6rem; flex-wrap:wrap;
+}
+.tab {
+  font-size:10px; font-weight:600; padding:7px 18px;
+  border-radius:99px; cursor:pointer;
+  border:1.5px solid var(--border);
+  background:var(--glass); color:var(--muted);
+  transition:all .2s var(--ease);
+  text-transform:uppercase; letter-spacing:.07em;
+}
+.tab:hover { border-color:var(--c2); color:var(--c4); }
+.tab.active { background:var(--c4); border-color:var(--c4); color:#fff; }
+
+/* Territory panel */
+.ter-panel { display:none; animation:fadeUp .45s var(--ease) both; }
+.ter-panel.active { display:block; }
+
+/* Territory card grid */
+.ter-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+.ter-card {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:16px; padding:18px 20px;
+  backdrop-filter:blur(8px); box-shadow:var(--sh);
+  transition:transform .22s var(--ease), box-shadow .22s;
+  position:relative; overflow:hidden;
+}
+.ter-card:hover { transform:translateY(-3px); box-shadow:0 10px 38px rgba(90,26,6,.14); }
+.ter-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+}
+.ter-card.frontera::before  { background:linear-gradient(90deg,#1D8C6A,#5E9420); }
+.ter-card.altoandino::before{ background:linear-gradient(90deg,#C04820,#F5B942); }
+.ter-card.costero::before   { background:linear-gradient(90deg,#8B2E10,#E07C1B); }
+.ter-card.selvatico::before { background:linear-gradient(90deg,#5E9420,#9FE1CB); }
+
+.ter-region {
+  font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:8px;
+}
+.ter-name {
+  font-family:'Playfair Display',serif; font-size:18px; font-weight:700;
+  color:var(--c5); line-height:1.1; margin-bottom:4px;
+}
+.ter-type {
+  font-size:9.5px; color:var(--muted); margin-bottom:14px;
+}
+.ter-kpis { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.kpi {
+  background:#fff; border:1px solid var(--border);
+  border-radius:8px; padding:9px 10px;
+}
+.kpi-val { font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:var(--c4); line-height:1; }
+.kpi-lbl { font-size:8px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-top:3px; }
+.ter-badge {
+  display:inline-block; font-size:8.5px; font-weight:600;
+  padding:3px 10px; border-radius:4px; margin-top:12px;
+  background:var(--c1); color:var(--c5); letter-spacing:.05em;
+}
+
+/* Comparison table */
+.cmp-table {
+  width:100%; border-collapse:collapse;
+  background:var(--glass); border-radius:12px; overflow:hidden;
+  backdrop-filter:blur(8px); box-shadow:var(--sh);
+}
+.cmp-table th {
+  background:linear-gradient(135deg,var(--c6),var(--c5));
+  color:#fff; font-size:9.5px; font-weight:600;
+  padding:11px 14px; text-align:left;
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.cmp-table td {
+  padding:10px 14px; font-size:10.5px; color:var(--ink);
+  border-bottom:1px solid var(--border);
+}
+.cmp-table tr:last-child td { border-bottom:none; }
+.cmp-table tr:hover td { background:var(--c0); }
+.cmp-table td:first-child { font-weight:600; color:var(--c5); }
+.cmp-table td.mono { font-family:'DM Mono',monospace; color:var(--c4); }
+.cmp-diff { font-size:8.5px; padding:2px 6px; border-radius:3px; margin-left:4px; }
+.cmp-diff.high { background:#FFE4E0; color:#C04820; }
+.cmp-diff.low  { background:#E0F0EA; color:#2E7D4F; }
+.cmp-diff.mid  { background:#FFF3CD; color:#8B5E0A; }
+
+/* Summary stats bar */
+.summary-bar {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:12px; margin-bottom:2rem;
+}
+.sum-stat {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:12px; padding:14px 16px; text-align:center;
+  backdrop-filter:blur(8px);
+  transition:transform .2s var(--ease);
+}
+.sum-stat:hover { transform:translateY(-2px); }
+.sum-val { font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:var(--c4); }
+.sum-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:4px; }
+
+@media(max-width:800px){
+  .summary-bar { grid-template-columns:1fr 1fr; }
+  .ter-grid    { grid-template-columns:1fr; }
+}
+@media(max-width:600px){
+  .summary-bar { grid-template-columns:1fr 1fr; }
+  .tab-bar     { gap:5px; }
+  .tab         { padding:6px 12px; font-size:9px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="16.5" stroke="#F5B942" stroke-width="1.2"/>
+      <circle cx="18" cy="18" r="5.5" fill="#F5B942" opacity=".9"/>
+      <circle cx="18" cy="18" r="2.5" fill="#5A1A06"/>
+      <line x1="18" y1="2" x2="18" y2="9" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="18" y1="27" x2="18" y2="34" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="2" y1="18" x2="9" y2="18" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="27" y1="18" x2="34" y2="18" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="6.4" y1="6.4" x2="11" y2="11" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="25" y1="25" x2="29.6" y2="29.6" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="29.6" y1="6.4" x2="25" y2="11" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="11" y1="25" x2="6.4" y2="29.6" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>
+    <div class="logo-text">
+      <h1>COVID-19 Perú</h1>
+      <span>Estudio Comparativo Epidemiológico · UCV 2026</span>
+    </div>
+  </div>
+  <nav>
+    <a href="index.html"       class="npill">Dashboard</a>
+    <a href="graficos.html"    class="npill">Gráficos</a>
+    <a href="territorios.html" class="npill active">Territorios</a>
+  </nav>
+</header>
+
+<!-- ══ HERO (compacto) ══ -->
+<div class="hero" style="grid-template-columns:1fr;padding:2rem 2.5rem 1.8rem">
+  <div>
+    <div class="hero-eyebrow">Comparativa territorial · DS1 · DS3 · DS4 · DS5</div>
+    <h2 class="hero-title">Análisis por <em>tipo de territorio</em></h2>
+    <p class="hero-sub">Comparativa entre regiones fronterizas, altoandinas, costeras y selváticas. Brechas en mortalidad, vacunación y capacidad hospitalaria.</p>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+  <!-- Resumen global -->
+  <section>
+    <div class="sec-hdr reveal">
+      <span class="sec-num">01</span>
+      <span class="sec-ttl">Resumen por tipo de territorio</span>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="summary-bar reveal">
+      <div class="sum-stat">
+        <div class="sum-val">4</div>
+        <div class="sum-lbl">Tipos de territorio</div>
+      </div>
+      <div class="sum-stat">
+        <div class="sum-val">25</div>
+        <div class="sum-lbl">Departamentos</div>
+      </div>
+      <div class="sum-stat">
+        <div class="sum-val">220,918</div>
+        <div class="sum-lbl">Fallecidos totales</div>
+      </div>
+      <div class="sum-stat">
+        <div class="sum-val">915,197</div>
+        <div class="sum-lbl">Dosis vacuna (Tacna)</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('frontera')">🟢 Fronterizos</button>
+      <button class="tab" onclick="showTab('altoandino')">🟠 Altoandinos</button>
+      <button class="tab" onclick="showTab('costero')">🔴 Costeros</button>
+      <button class="tab" onclick="showTab('selvatico')">🟩 Selvático</button>
+      <button class="tab" onclick="showTab('comparativa')">📊 Tabla comparativa</button>
+    </div>
+
+    <!-- ── TAB: FRONTERIZOS ── -->
+    <div class="ter-panel active" id="tab-frontera">
+      <div class="ter-grid">
+        <div class="ter-card frontera reveal">
+          <div class="ter-region">Región fronteriza · Sur</div>
+          <div class="ter-name">Tacna</div>
+          <div class="ter-type">Frontera con Chile · DS3 + DS4</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">1,820</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">915,197</div><div class="kpi-lbl">Dosis aplic.</div></div>
+            <div class="kpi"><div class="kpi-val">97.8%</div><div class="kpi-lbl">Fallec. DS3</div></div>
+            <div class="kpi"><div class="kpi-val">18</div><div class="kpi-lbl">Camas UCI</div></div>
+          </div>
+          <span class="ter-badge">Mejor cobertura vacunal fronteriza</span>
+        </div>
+
+        <div class="ter-card frontera reveal">
+          <div class="ter-region">Región fronteriza · Norte</div>
+          <div class="ter-name">Tumbes</div>
+          <div class="ter-type">Frontera con Ecuador · DS1</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Fallecidos DS1</div></div>
+            <div class="kpi"><div class="kpi-val">Bajo</div><div class="kpi-lbl">Datos parciales</div></div>
+            <div class="kpi"><div class="kpi-val">Costero</div><div class="kpi-lbl">Tipo geografía</div></div>
+            <div class="kpi"><div class="kpi-val">Dep. 1</div><div class="kpi-lbl">Más pequeño</div></div>
+          </div>
+          <span class="ter-badge">Datos DS1 no desagregados</span>
+        </div>
+
+        <div class="ter-card frontera reveal">
+          <div class="ter-region">Contexto · DS4</div>
+          <div class="ter-name">Perfil vacunal</div>
+          <div class="ter-type">Tacna · Pfizer predominante</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">68%</div><div class="kpi-lbl">Pfizer</div></div>
+            <div class="kpi"><div class="kpi-val">20.6%</div><div class="kpi-lbl">Sinopharm</div></div>
+            <div class="kpi"><div class="kpi-val">50.6%</div><div class="kpi-lbl">Mujeres</div></div>
+            <div class="kpi"><div class="kpi-val">Jul '21</div><div class="kpi-lbl">Pico 103k</div></div>
+          </div>
+          <span class="ter-badge">Campaña intensa 2021</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: ALTOANDINOS ── -->
+    <div class="ter-panel" id="tab-altoandino">
+      <div class="ter-grid">
+        <div class="ter-card altoandino reveal">
+          <div class="ter-region">Región altoandina · Norte</div>
+          <div class="ter-name">Cajamarca</div>
+          <div class="ter-type">Sierra norte · DS1 + DS2</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">2,760</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">8,291</div><div class="kpi-lbl">Casos 2020</div></div>
+            <div class="kpi"><div class="kpi-val">13</div><div class="kpi-lbl">Provincias</div></div>
+            <div class="kpi"><div class="kpi-val">34</div><div class="kpi-lbl">UCI camas</div></div>
+          </div>
+          <span class="ter-badge">Único dpto con DS2 completo</span>
+        </div>
+
+        <div class="ter-card altoandino reveal">
+          <div class="ter-region">Región altoandina · Sur</div>
+          <div class="ter-name">Puno</div>
+          <div class="ter-type">Altiplano · Frontera Bolivia · DS1</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">3,540</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">Alto</div><div class="kpi-lbl">Altitud media</div></div>
+            <div class="kpi"><div class="kpi-val">Rural</div><div class="kpi-lbl">Característica</div></div>
+            <div class="kpi"><div class="kpi-val">Bajo</div><div class="kpi-lbl">UCI acceso</div></div>
+          </div>
+          <span class="ter-badge">Alta dispersión poblacional</span>
+        </div>
+
+        <div class="ter-card altoandino reveal">
+          <div class="ter-region">Región altoandina · Centro</div>
+          <div class="ter-name">Cusco</div>
+          <div class="ter-type">Sierra sur · DS1 · DS5</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">5,291</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">Medio</div><div class="kpi-lbl">Acceso UCI</div></div>
+            <div class="kpi"><div class="kpi-val">Turismo</div><div class="kpi-lbl">Factor riesgo</div></div>
+            <div class="kpi"><div class="kpi-val">2.4k</div><div class="kpi-lbl">Densidad baja</div></div>
+          </div>
+          <span class="ter-badge">Impacto 2ª ola fuerte</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: COSTEROS ── -->
+    <div class="ter-panel" id="tab-costero">
+      <div class="ter-grid">
+        <div class="ter-card costero reveal">
+          <div class="ter-region">Costa · Macroregión Lima</div>
+          <div class="ter-name">Lima + Callao</div>
+          <div class="ter-type">Capital · DS1 · DS3 · DS5</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">107,314</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">48.6%</div><div class="kpi-lbl">Del total Perú</div></div>
+            <div class="kpi"><div class="kpi-val">93</div><div class="kpi-lbl">UCI camas</div></div>
+            <div class="kpi"><div class="kpi-val">Alta</div><div class="kpi-lbl">Sobresaturación</div></div>
+          </div>
+          <span class="ter-badge">Mayor concentración de fallecidos</span>
+        </div>
+
+        <div class="ter-card costero reveal">
+          <div class="ter-region">Costa · Norte</div>
+          <div class="ter-name">Piura</div>
+          <div class="ter-type">Costa norte · DS1</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">13,101</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">5.9%</div><div class="kpi-lbl">Del total</div></div>
+            <div class="kpi"><div class="kpi-val">2º</div><div class="kpi-lbl">Rk. fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">Medio</div><div class="kpi-lbl">UCI acceso</div></div>
+          </div>
+          <span class="ter-badge">2do departamento más afectado</span>
+        </div>
+
+        <div class="ter-card costero reveal">
+          <div class="ter-region">Costa · Sur</div>
+          <div class="ter-name">Arequipa</div>
+          <div class="ter-type">Costa-sierra sur · DS1 · DS5</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">10,636</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">4.8%</div><div class="kpi-lbl">Del total</div></div>
+            <div class="kpi"><div class="kpi-val">Buena</div><div class="kpi-lbl">Infraestruc.</div></div>
+            <div class="kpi"><div class="kpi-val">Medio</div><div class="kpi-lbl">Saturación</div></div>
+          </div>
+          <span class="ter-badge">Infraestructura hospitalaria mejor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: SELVÁTICO ── -->
+    <div class="ter-panel" id="tab-selvatico">
+      <div class="ter-grid">
+        <div class="ter-card selvatico reveal">
+          <div class="ter-region">Selva · Amazonía norte</div>
+          <div class="ter-name">Loreto</div>
+          <div class="ter-type">Selva baja · DS1 · DS5</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">4,352</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">28%</div><div class="kpi-lbl">Del territorio</div></div>
+            <div class="kpi"><div class="kpi-val">18</div><div class="kpi-lbl">UCI selva</div></div>
+            <div class="kpi"><div class="kpi-val">Bajo</div><div class="kpi-lbl">Acceso RRSS</div></div>
+          </div>
+          <span class="ter-badge">Mayor departamento del Perú</span>
+        </div>
+
+        <div class="ter-card selvatico reveal">
+          <div class="ter-region">Selva · Central</div>
+          <div class="ter-name">Ucayali</div>
+          <div class="ter-type">Selva central · DS1 · DS5</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">2,420</div><div class="kpi-lbl">Fallecidos</div></div>
+            <div class="kpi"><div class="kpi-val">2do</div><div class="kpi-lbl">Más grande</div></div>
+            <div class="kpi"><div class="kpi-val">Limitado</div><div class="kpi-lbl">UCI acceso</div></div>
+            <div class="kpi"><div class="kpi-val">Disperso</div><div class="kpi-lbl">Población</div></div>
+          </div>
+          <span class="ter-badge">Brecha digital en atención</span>
+        </div>
+
+        <div class="ter-card selvatico reveal">
+          <div class="ter-region">Selva · Sur</div>
+          <div class="ter-name">Madre de Dios</div>
+          <div class="ter-type">Selva amazónica · DS1</div>
+          <div class="ter-kpis">
+            <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">DS1 sin desa.</div></div>
+            <div class="kpi"><div class="kpi-val">Menor</div><div class="kpi-lbl">Pobl. del país</div></div>
+            <div class="kpi"><div class="kpi-val">Mínimo</div><div class="kpi-lbl">UCI acceso</div></div>
+            <div class="kpi"><div class="kpi-val">Bolivia</div><div class="kpi-lbl">Frontera</div></div>
+          </div>
+          <span class="ter-badge">Menor población del Perú</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: TABLA COMPARATIVA ── -->
+    <div class="ter-panel" id="tab-comparativa">
+      <div class="reveal">
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th>Indicador</th>
+              <th>Fronterizo (Tacna)</th>
+              <th>Altoandino (Cajamarca)</th>
+              <th>Costero (Lima)</th>
+              <th>Selvático (Loreto)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fallecidos SINADEF</td>
+              <td class="mono">1,820 <span class="cmp-diff low">Bajo</span></td>
+              <td class="mono">2,760 <span class="cmp-diff low">Bajo</span></td>
+              <td class="mono">96,461 <span class="cmp-diff high">Crítico</span></td>
+              <td class="mono">4,352 <span class="cmp-diff mid">Medio</span></td>
+            </tr>
+            <tr>
+              <td>% del total nacional</td>
+              <td class="mono">0.8%</td>
+              <td class="mono">1.2%</td>
+              <td class="mono">43.7%</td>
+              <td class="mono">2.0%</td>
+            </tr>
+            <tr>
+              <td>Camas UCI (F500)</td>
+              <td class="mono">18 <span class="cmp-diff mid">Medio</span></td>
+              <td class="mono">34 <span class="cmp-diff mid">Medio</span></td>
+              <td class="mono">93 <span class="cmp-diff low">Mayor</span></td>
+              <td class="mono">18 <span class="cmp-diff high">Insuf.</span></td>
+            </tr>
+            <tr>
+              <td>Cobertura vacunal</td>
+              <td class="mono">915,197 dosis</td>
+              <td class="mono">Datos parciales</td>
+              <td class="mono">Alta</td>
+              <td class="mono">Limitada</td>
+            </tr>
+            <tr>
+              <td>Vacuna predominante</td>
+              <td class="mono">Pfizer (68%)</td>
+              <td class="mono">—</td>
+              <td class="mono">Pfizer</td>
+              <td class="mono">Pfizer / Sino.</td>
+            </tr>
+            <tr>
+              <td>Acceso a UCI</td>
+              <td class="mono">Medio</td>
+              <td class="mono">Limitado <span class="cmp-diff high">Brecha</span></td>
+              <td class="mono">Alto (saturado)</td>
+              <td class="mono">Crítico <span class="cmp-diff high">Brecha</span></td>
+            </tr>
+            <tr>
+              <td>Edad media fallecidos</td>
+              <td class="mono">~64 años</td>
+              <td class="mono">~67 años</td>
+              <td class="mono">~66 años</td>
+              <td class="mono">~60 años</td>
+            </tr>
+            <tr>
+              <td>Razón fallecidos M/F</td>
+              <td class="mono">~1.6</td>
+              <td class="mono">~1.8</td>
+              <td class="mono">1.71</td>
+              <td class="mono">~1.7</td>
+            </tr>
+            <tr>
+              <td>Dataset principal</td>
+              <td class="mono">DS3 + DS4</td>
+              <td class="mono">DS1 + DS2</td>
+              <td class="mono">DS1 + DS5</td>
+              <td class="mono">DS1 + DS5</td>
+            </tr>
+            <tr>
+              <td>Ola más impactante</td>
+              <td class="mono">2ª Ola 2021</td>
+              <td class="mono">2ª Ola 2021</td>
+              <td class="mono">2ª Ola 2021</td>
+              <td class="mono">1ª Ola 2020</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="ft-title">COVID-19 Perú · Estudio Comparativo Epidemiológico 2020–2024</div>
+    <div class="ft-university">Universidad César Vallejo · Escuela de Ingeniería de Sistemas</div>
+    <div class="ft-advisor">Asesor: <strong>Prof. M. Chávez Herrera</strong></div>
+    <div class="ft-team-label">Equipo investigador</div>
+    <div class="ft-team">
+      <a href="https://orcid.org/0000-0000-0000-0001" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Ttito Ulloa</a>
+      <a href="https://orcid.org/0000-0000-0000-0002" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Viera Ojeda</a>
+      <a href="https://orcid.org/0000-0000-0000-0003" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Córdova Aznaran</a>
+      <a href="https://orcid.org/0000-0000-0000-0004" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Campos Otaegui</a>
+      <a href="https://orcid.org/0000-0000-0000-0005" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Tejada Montes</a>
+      <a href="https://orcid.org/0000-0000-0000-0006" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Moreno Acosta</a>
+    </div>
+    <div class="ft-sources-label">Fuentes de datos oficiales</div>
+    <div class="ft-sources">
+      <a href="https://www.gob.pe/minsa" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#E07C1B"></span>MINSA</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/informaci%C3%B3n-de-fallecidos-del-sistema-nacional-de-defunciones-ministerio-de-salud" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#C04820"></span>SINADEF</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/casos-positivos-por-covid-19-ministerio-de-salud-minsa" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#F5B942"></span>NOTI-COVID</a>
+      <a href="https://covid19.minsa.gob.pe/sala_situacional.asp" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#2E7D4F"></span>SISCOVID</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/camas-hospitalarias-tb_camas_f500-ministerio-de-salud" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#1D8C6A"></span>TB_CAMAS_F500</a>
+      <a href="https://www.datosabiertos.gob.pe/group/datos-abiertos-de-covid-19" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#639922"></span>datos.gob.pe</a>
+    </div>
+    <div class="ft-copy">© 2026 Universidad César Vallejo · Todos los derechos reservados</div>
+  </div>
+</footer>
+
+<script>
+/* Tabs */
+function showTab(id) {
+  document.querySelectorAll('.ter-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+/* Scroll reveal */
+const ro = new IntersectionObserver(ee => {
+  ee.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); ro.unobserve(e.target); } });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>

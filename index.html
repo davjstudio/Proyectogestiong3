@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COVID-19 Perú — Dashboard Principal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+/* ── INDEX-SPECIFIC ── */
+.dashboard {
+  display: grid;
+  grid-template-columns: 210px 1fr 210px;
+  gap: 16px;
+  align-items: start;
+}
+.ds-col { display:flex; flex-direction:column; gap:10px; }
+
+/* Dataset cards */
+.ds-card {
+  background: var(--glass); border:1px solid var(--border);
+  border-radius:14px; padding:13px 15px; cursor:pointer;
+  transition: all .22s var(--ease); position:relative; overflow:hidden;
+  backdrop-filter: blur(8px);
+}
+.ds-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2.5px;
+  background: linear-gradient(90deg,var(--c4),var(--c2));
+  transform: scaleX(0); transform-origin:left;
+  transition: transform .3s var(--ease);
+}
+.ds-card:hover { border-color:var(--c2); transform:translateY(-2px); box-shadow:var(--sh); }
+.ds-card:hover::before, .ds-card.active::before { transform:scaleX(1); }
+.ds-card.active {
+  border:1.5px solid var(--c3);
+  background: linear-gradient(135deg,#FFF5E6,var(--c0));
+  box-shadow: 0 6px 28px rgba(192,72,32,.18);
+}
+.ds-card.left.active::after {
+  content:''; position:absolute; right:-9px; top:50%; transform:translateY(-50%);
+  border:7px solid transparent; border-left:8px solid var(--c3); z-index:2;
+}
+.ds-card.right.active::after {
+  content:''; position:absolute; left:-9px; top:50%; transform:translateY(-50%);
+  border:7px solid transparent; border-right:8px solid var(--c3); z-index:2;
+}
+.ds-tag {
+  font-family:'DM Mono',monospace; font-size:9px; font-weight:500;
+  background:var(--c1); color:var(--c5); padding:2px 8px;
+  border-radius:4px; display:inline-block; margin-bottom:6px; letter-spacing:.06em;
+  transition: all .2s;
+}
+.ds-card.active .ds-tag { background:var(--c4); color:#fff; }
+.ds-card h3 { font-size:11.5px; font-weight:600; color:var(--ink); line-height:1.4; margin-bottom:3px; }
+.ds-card p  { font-size:10px; color:var(--muted); line-height:1.45; }
+.ds-stat { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--c4); margin-top:6px; }
+.ds-bar {
+  height:3px; border-radius:2px; margin-top:8px;
+  background:linear-gradient(90deg,var(--c4),var(--c2));
+  transform-origin:left; transition:transform .5s var(--ease);
+}
+
+/* Map wrapper */
+.map-wrap {
+  background: var(--glass); border:1px solid var(--border);
+  border-radius:18px; padding:18px 14px 14px;
+  display:flex; flex-direction:column; align-items:center;
+  box-shadow: var(--sh); backdrop-filter:blur(10px);
+  animation: mapReveal .9s var(--ease) .2s both;
+}
+.map-title {
+  font-size:10px; font-weight:700; color:var(--muted);
+  letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-bottom:12px;
+}
+#peru-map {
+  width:100%; max-width:260px;
+  filter: drop-shadow(0 8px 22px rgba(90,26,6,.18));
+  animation: mapReveal 1s var(--ease) .4s both;
+}
+.dep {
+  cursor:pointer;
+  transition: filter .18s, opacity .18s, transform .2s;
+  transform-origin:center; transform-box:fill-box;
+}
+.dep:hover {
+  filter:brightness(1.22) saturate(1.3);
+  opacity:.88; transform:scale(1.025);
+}
+.dep-label {
+  pointer-events:none;
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:600;
+}
+
+.map-legend {
+  display:grid; grid-template-columns:1fr 1fr; gap:4px 14px;
+  margin-top:14px; width:100%;
+}
+.leg { display:flex; align-items:center; gap:5px; font-size:9.5px; color:var(--muted); }
+.leg-sq { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+.map-hint { font-size:9.5px; color:var(--muted); text-align:center; margin-top:10px; font-style:italic; }
+
+/* Detail panel */
+.detail-panel {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:16px; padding:18px 22px; margin-top:16px;
+  backdrop-filter:blur(8px);
+  animation:fadeUp .5s var(--ease) .5s both;
+}
+.dp-hdr { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.dp-hdr h3 { font-size:13px; font-weight:600; color:var(--c5); }
+.dp-sub { font-family:'DM Mono',monospace; font-size:9px; background:var(--c1); color:var(--c5); padding:3px 9px; border-radius:4px; }
+
+/* Quick-nav links */
+.quick-nav-link {
+  display:flex; align-items:center; gap:8px;
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:12px; padding:10px 13px; text-decoration:none;
+  transition:all .2s var(--ease); font-size:11px; font-weight:600; color:var(--c4);
+}
+.quick-nav-link:hover { border-color:var(--c2); transform:translateY(-2px); box-shadow:var(--sh); }
+
+@media(max-width:900px){
+  .dashboard { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="map-tooltip" id="mapTooltip"></div>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="18" cy="18" r="16.5" stroke="#F5B942" stroke-width="1.2"/>
+      <circle cx="18" cy="18" r="5.5" fill="#F5B942" opacity=".9"/>
+      <circle cx="18" cy="18" r="2.5" fill="#5A1A06"/>
+      <line x1="18" y1="2" x2="18" y2="9" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="18" y1="27" x2="18" y2="34" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="2" y1="18" x2="9" y2="18" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="27" y1="18" x2="34" y2="18" stroke="#F5B942" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="6.4" y1="6.4" x2="11" y2="11" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="25" y1="25" x2="29.6" y2="29.6" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="29.6" y1="6.4" x2="25" y2="11" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="11" y1="25" x2="6.4" y2="29.6" stroke="#F5B942" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>
+    <div class="logo-text">
+      <h1>COVID-19 Perú</h1>
+      <span>Estudio Comparativo Epidemiológico · UCV 2026</span>
+    </div>
+  </div>
+  <nav>
+    <a href="index.html"       class="npill active">Dashboard</a>
+    <a href="graficos.html"    class="npill">Gráficos</a>
+    <a href="territorios.html" class="npill">Territorios</a>
+  </nav>
+</header>
+
+<!-- ══ HERO ══ -->
+<div class="hero">
+  <div>
+    <div class="hero-eyebrow">Análisis epidemiológico · 5 datasets oficiales · MINSA Perú</div>
+    <h2 class="hero-title">Respuesta al<br/><em>COVID-19 en Perú</em><br/>2020 – 2024</h2>
+    <p class="hero-sub">Estudio comparativo entre poblaciones fronterizas y altoandinas. Cinco bases de datos oficiales del MINSA procesadas con Python y SQL Server 2022.</p>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hval counter" data-target="220918">0</div><div class="hlbl">Fallecidos</div></div>
+      <div class="hstat"><div class="hval counter" data-target="915197">0</div><div class="hlbl">Vacunaciones</div></div>
+      <div class="hstat"><div class="hval counter" data-target="572">0</div><div class="hlbl">Establec.</div></div>
+      <div class="hstat"><div class="hval">5</div><div class="hlbl">Datasets</div></div>
+    </div>
+  </div>
+  <div class="hero-source">
+    <strong>📋 Fuentes de datos</strong>
+    MINSA · SINADEF · NOTI-COVID<br/>
+    SISCOVID · DIRESA Cajamarca<br/>
+    Tablero F500 · datos.gob.pe
+    <div class="src-pills">
+      <span class="src-pill">Python 3.11</span>
+      <span class="src-pill">SQL Server 2022</span>
+      <span class="src-pill">Pandas</span>
+      <span class="src-pill">Matplotlib</span>
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,.22);margin-top:10px">Universidad César Vallejo · 2026</div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<main>
+  <section id="dashboard">
+    <div class="sec-hdr reveal">
+      <span class="sec-num">01</span>
+      <span class="sec-ttl">Explorador de datasets</span>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="dashboard">
+
+      <!-- Columna izquierda -->
+      <div class="ds-col">
+        <div class="ds-card left active reveal" id="d1" onclick="activate(1)">
+          <span class="ds-tag">DS1</span>
+          <h3>Padrón Nacional de Fallecidos</h3>
+          <p>SINADEF · 27 depts · 2020–2024</p>
+          <div class="ds-stat">220,918 registros</div>
+          <div class="ds-bar" style="width:100%"></div>
+        </div>
+        <div class="ds-card left reveal" id="d2" onclick="activate(2)">
+          <span class="ds-tag">DS2</span>
+          <h3>Casos COVID Cajamarca 2020</h3>
+          <p>DIRESA · 13 provincias · confirmados</p>
+          <div class="ds-stat">8,291 confirmados</div>
+          <div class="ds-bar" style="width:4%"></div>
+        </div>
+        <div class="ds-card left reveal" id="d3" onclick="activate(3)">
+          <span class="ds-tag">DS3</span>
+          <h3>Fallecidos SISCOVID</h3>
+          <p>Variables clínicas · hospitalización</p>
+          <div class="ds-stat">2,028 registros</div>
+          <div class="ds-bar" style="width:1%"></div>
+        </div>
+      </div>
+
+      <!-- ══ MAPA PERÚ CENTRAL ══ -->
+      <div class="map-wrap">
+        <div class="map-title">🗺 República del Perú · 25 Departamentos</div>
+
+        <!--
+          SVG trazado a partir de coordenadas geográficas reales de Perú.
+          Proyección: lon/lat → x/y lineal ajustada al viewBox 300×560.
+          Longitud rango: ~69°O – ~81.5°O  → x: 0–300
+          Latitud  rango: ~0.1°S – ~18.4°S → y: 0–560
+          Factor x: 300/(81.5-69)  = ~24  | Factor y: 560/(18.4-0.1) = ~30.6
+          Origin: lon=-81.5 → x=0 ; lat=-0.1°S → y=0 (norte arriba)
+        -->
+        <svg id="peru-map" viewBox="0 0 300 560" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="dsh" x="-8%" y="-8%" width="116%" height="116%">
+              <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(90,26,6,.22)"/>
+            </filter>
+          </defs>
+          <g filter="url(#dsh)">
+
+<!-- ══ TUMBES — extremo noroeste, pequeño trapecio ══ -->
+<path class="dep" data-name="Tumbes" data-falls="—" fill="#E8A040"
+  d="M26,12 L52,8 L60,18 L58,32 L44,38 L28,32 Z"/>
+<text class="dep-label" x="43" y="24" text-anchor="middle" font-size="6" fill="#fff">TUMBES</text>
+
+<!-- ══ PIURA — norte costa, más grande que Tumbes ══ -->
+<path class="dep" data-name="Piura" data-falls="13,101" fill="#F5B942"
+  d="M28,32 L44,38 L58,32 L66,46 L70,64 L62,80 L50,88 L34,86 L20,74 L16,54 L18,38 Z"/>
+<text class="dep-label" x="44" y="61" text-anchor="middle" font-size="7.5" fill="#4A1A00">PIURA</text>
+
+<!-- ══ LAMBAYEQUE — costa angosta ══ -->
+<path class="dep" data-name="Lambayeque" data-falls="4,980" fill="#EF9F27"
+  d="M34,86 L50,88 L54,100 L56,112 L46,118 L32,112 L28,100 Z"/>
+<text class="dep-label" x="42" y="103" text-anchor="middle" font-size="6" fill="#4A1A00">LAMB.</text>
+
+<!-- ══ LA LIBERTAD — costa-sierra norte, alargado E-O ══ -->
+<path class="dep" data-name="La Libertad" data-falls="11,005" fill="#E07C1B"
+  d="M32,112 L46,118 L56,112 L68,116 L82,122 L84,138 L74,148 L60,150 L44,144 L30,132 L26,120 Z"/>
+<text class="dep-label" x="56" y="133" text-anchor="middle" font-size="6.5" fill="#fff">LA LIBERTAD</text>
+
+<!-- ══ CAJAMARCA — sierra norte, grande, irregular ══ -->
+<path class="dep" data-name="Cajamarca" data-falls="2,760" fill="#F5B942"
+  d="M56,88 L70,84 L84,80 L100,84 L112,90 L118,106 L114,124 L100,134 L84,138 L68,116 L56,112 L54,100 Z"/>
+<text class="dep-label" x="86" y="110" text-anchor="middle" font-size="7" fill="#4A1A00">CAJAMARCA</text>
+
+<!-- ══ AMAZONAS — selva norte, debajo de Ecuador ══ -->
+<path class="dep" data-name="Amazonas" data-falls="1,740" fill="#F0A080"
+  d="M100,84 L116,74 L130,72 L144,78 L148,94 L140,110 L126,118 L114,124 L118,106 L112,90 Z"/>
+<text class="dep-label" x="126" y="98" text-anchor="middle" font-size="6" fill="#4A1A00">AMAZ.</text>
+
+<!-- ══ SAN MARTÍN — selva norcentral ══ -->
+<path class="dep" data-name="San Martín" data-falls="2,910" fill="#EF9F27"
+  d="M116,74 L132,64 L150,66 L164,72 L168,90 L158,106 L144,114 L130,118 L126,118 L140,110 L148,94 L144,78 L130,72 Z"/>
+<text class="dep-label" x="146" y="92" text-anchor="middle" font-size="6.5" fill="#4A1A00">S. MARTÍN</text>
+
+<!-- ══ LORETO — el más grande, noreste amazónico ══ -->
+<path class="dep" data-name="Loreto" data-falls="4,352" fill="#5E9420"
+  d="M130,12 L156,8 L186,10 L214,16 L238,24 L252,36 L260,52 L262,70
+     L256,92 L244,110 L228,126 L210,136 L190,142 L172,144 L158,140
+     L148,130 L144,114 L158,106 L168,90 L164,72 L150,66 L132,64 L116,74
+     L112,62 L108,44 L114,28 Z"/>
+<text class="dep-label" x="210" y="82" text-anchor="middle" font-size="11" fill="#2A5010">LORETO</text>
+
+<!-- ══ ÁNCASH — sierra costera ══ -->
+<path class="dep" data-name="Áncash" data-falls="4,290" fill="#C04820"
+  d="M26,148 L44,144 L60,150 L74,148 L84,154 L82,172 L70,182 L52,180 L36,170 L24,158 Z"/>
+<text class="dep-label" x="54" y="165" text-anchor="middle" font-size="6.5" fill="#fff">ÁNCASH</text>
+
+<!-- ══ HUÁNUCO — sierra-selva central ══ -->
+<path class="dep" data-name="Huánuco" data-falls="2,180" fill="#F5B942"
+  d="M84,138 L100,134 L114,124 L126,118 L130,118 L144,114 L148,130 L144,148 L132,158 L118,162 L104,158 L92,152 L82,156 L82,172 L84,154 L74,148 Z"/>
+<text class="dep-label" x="115" y="142" text-anchor="middle" font-size="6" fill="#4A1A00">HUÁNUCO</text>
+
+<!-- ══ UCAYALI — selva central, segundo más grande ══ -->
+<path class="dep" data-name="Ucayali" data-falls="2,420" fill="#F0C0A8"
+  d="M148,130 L158,140 L172,144 L190,142 L210,136 L228,126 L244,140
+     L240,166 L228,184 L212,196 L196,202 L180,200 L164,190 L152,178
+     L144,162 L144,148 Z"/>
+<text class="dep-label" x="196" y="168" text-anchor="middle" font-size="8.5" fill="#4A1A00">UCAYALI</text>
+
+<!-- ══ LIMA — costa centro, mayor densidad poblacional ══ -->
+<path class="dep" data-name="Lima" data-falls="96,461" fill="#8B2E10"
+  d="M24,170 L36,170 L52,180 L70,182 L74,198 L64,210 L48,208 L32,196 L20,184 Z"/>
+<text class="dep-label" x="46" y="193" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="700">LIMA</text>
+
+<!-- ══ CALLAO — muy pequeño, puerto de Lima ══ -->
+<path class="dep" data-name="Callao" data-falls="10,853" fill="#5A1A06"
+  d="M19,183 L26,180 L28,188 L20,192 Z"/>
+<text class="dep-label" x="14" y="189" text-anchor="middle" font-size="5" fill="#fff">CLL</text>
+
+<!-- ══ PASCO — sierra central, pequeño ══ -->
+<path class="dep" data-name="Pasco" data-falls="—" fill="#C04820"
+  d="M104,158 L118,162 L132,158 L140,168 L134,180 L122,184 L108,178 L100,168 Z"/>
+<text class="dep-label" x="120" y="173" text-anchor="middle" font-size="5.5" fill="#fff">PASCO</text>
+
+<!-- ══ JUNÍN — sierra-selva central ══ -->
+<path class="dep" data-name="Junín" data-falls="7,602" fill="#D05015"
+  d="M82,172 L82,156 L92,152 L104,158 L100,168 L108,178 L122,184 L126,198
+     L116,210 L102,208 L88,200 L76,190 L70,182 Z"/>
+<text class="dep-label" x="100" y="192" text-anchor="middle" font-size="6.5" fill="#fff">JUNÍN</text>
+
+<!-- ══ HUANCAVELICA — sierra ══ -->
+<path class="dep" data-name="Huancavelica" data-falls="—" fill="#E07C1B"
+  d="M70,182 L76,190 L88,200 L86,214 L74,220 L60,214 L54,202 L64,210 Z"/>
+<text class="dep-label" x="72" y="206" text-anchor="middle" font-size="5.5" fill="#4A1A00">HVCL.</text>
+
+<!-- ══ ICA — costa sur ══ -->
+<path class="dep" data-name="Ica" data-falls="3,820" fill="#F5B942"
+  d="M48,208 L64,210 L60,214 L58,232 L46,240 L30,232 L22,218 L24,206 Z"/>
+<text class="dep-label" x="42" y="224" text-anchor="middle" font-size="7" fill="#4A1A00">ICA</text>
+
+<!-- ══ AYACUCHO — sierra sur centro ══ -->
+<path class="dep" data-name="Ayacucho" data-falls="1,970" fill="#F0A080"
+  d="M86,214 L102,208 L116,210 L126,198 L138,206 L136,224 L124,236
+     L110,240 L96,234 L82,224 L74,220 Z"/>
+<text class="dep-label" x="106" y="223" text-anchor="middle" font-size="6.5" fill="#4A1A00">AYACUCHO</text>
+
+<!-- ══ APURÍMAC — sierra, pequeño entre Ayacucho/Cusco ══ -->
+<path class="dep" data-name="Apurímac" data-falls="1,696" fill="#F0C0A8"
+  d="M116,210 L126,198 L136,204 L134,218 L122,224 L110,218 Z"/>
+<text class="dep-label" x="123" y="213" text-anchor="middle" font-size="5" fill="#4A1A00">APURÍM.</text>
+
+<!-- ══ MADRE DE DIOS — selva sur, grande ══ -->
+<path class="dep" data-name="Madre de Dios" data-falls="—" fill="#9FE1CB"
+  d="M196,202 L212,196 L228,184 L244,188 L262,200 L270,224 L264,250
+     L246,264 L224,268 L202,260 L184,246 L176,226 L176,208 L180,200 Z"/>
+<text class="dep-label" x="232" y="236" text-anchor="middle" font-size="7" fill="#085041">MADRE DE DIOS</text>
+
+<!-- ══ CUSCO — sierra sur, grande e irregular ══ -->
+<path class="dep" data-name="Cusco" data-falls="5,291" fill="#F0A080"
+  d="M122,184 L134,180 L140,168 L144,162 L152,178 L164,190 L176,200
+     L176,208 L176,226 L184,246 L174,264 L156,270 L140,262 L126,250
+     L118,234 L124,236 L136,224 L134,218 L136,204 L126,198 Z"/>
+<text class="dep-label" x="152" y="234" text-anchor="middle" font-size="7.5" fill="#4A1A00">CUSCO</text>
+
+<!-- ══ AREQUIPA — costa-sierra sur, grande ══ -->
+<path class="dep" data-name="Arequipa" data-falls="10,636" fill="#E07C1B"
+  d="M58,232 L74,220 L82,224 L96,234 L110,240 L118,234 L126,250 L120,272
+     L106,280 L88,278 L70,262 L54,246 L44,232 Z"/>
+<text class="dep-label" x="86" y="258" text-anchor="middle" font-size="7.5" fill="#4A1A00">AREQUIPA</text>
+
+<!-- ══ PUNO — sierra sur, altiplano, frontera con Bolivia ══ -->
+<path class="dep" data-name="Puno" data-falls="3,540" fill="#F0C0A8"
+  d="M156,270 L174,264 L184,246 L202,260 L210,282 L202,306 L186,316
+     L168,316 L152,302 L142,284 L140,270 L140,262 Z"/>
+<text class="dep-label" x="174" y="290" text-anchor="middle" font-size="7.5" fill="#4A1A00">PUNO</text>
+
+<!-- ══ MOQUEGUA — pequeño, costa-sierra sur ══ -->
+<path class="dep" data-name="Moquegua" data-falls="—" fill="#F5B942"
+  d="M88,278 L106,280 L120,272 L130,284 L126,302 L110,308 L92,302 L78,290 Z"/>
+<text class="dep-label" x="104" y="293" text-anchor="middle" font-size="5.5" fill="#4A1A00">MOQUEGUA</text>
+
+<!-- ══ TACNA — extremo sur, frontera con Chile ══ -->
+<path class="dep" data-name="Tacna" data-falls="1,820" fill="#E07C1B"
+  d="M92,302 L110,308 L126,302 L132,320 L122,334 L104,336 L88,322 Z"/>
+<text class="dep-label" x="110" y="320" text-anchor="middle" font-size="7" fill="#4A1A00" font-weight="700">TACNA</text>
+
+<!-- ══ CAPITAL LIMA — pin animado ══ -->
+<circle cx="26" cy="186" r="5.5" fill="none" stroke="#fff" stroke-width="1.5" opacity=".8" pointer-events="none"/>
+<circle cx="26" cy="186" r="3" fill="#fff" opacity=".9" pointer-events="none">
+  <animate attributeName="r" values="3;5.5;3" dur="2.2s" repeatCount="indefinite"/>
+  <animate attributeName="opacity" values=".9;.35;.9" dur="2.2s" repeatCount="indefinite"/>
+</circle>
+
+          </g>
+        </svg>
+
+        <div class="map-legend">
+          <span class="leg"><span class="leg-sq" style="background:#5A1A06"></span>Lima / Callao</span>
+          <span class="leg"><span class="leg-sq" style="background:#8B2E10"></span>Lima Metro</span>
+          <span class="leg"><span class="leg-sq" style="background:#C04820"></span>Altoandino</span>
+          <span class="leg"><span class="leg-sq" style="background:#E07C1B"></span>Fronterizo</span>
+          <span class="leg"><span class="leg-sq" style="background:#5E9420"></span>Loreto</span>
+          <span class="leg"><span class="leg-sq" style="background:#9FE1CB"></span>Madre de Dios</span>
+        </div>
+        <p class="map-hint">Pasa el cursor sobre cada departamento</p>
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="ds-col">
+        <div class="ds-card right reveal" id="d4" onclick="activate(4)">
+          <span class="ds-tag">DS4</span>
+          <h3>Padrón de Vacunados</h3>
+          <p>NOTI-COVID · Pfizer, Sinopharm, AZ · Tacna</p>
+          <div class="ds-stat">915,197 dosis</div>
+          <div class="ds-bar" style="width:60%"></div>
+        </div>
+        <div class="ds-card right reveal" id="d5" onclick="activate(5)">
+          <span class="ds-tag">DS5</span>
+          <h3>Tablero Camas F500</h3>
+          <p>MINSA · 572 establecimientos · 2021–2023</p>
+          <div class="ds-stat">510,883 registros</div>
+          <div class="ds-bar" style="width:33%"></div>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px">
+          <a href="graficos.html" class="quick-nav-link">
+            <span style="font-size:16px">📊</span>
+            <span>Ver gráficos<br/><span style="font-size:9px;font-weight:400;color:var(--muted)">4 visualizaciones</span></span>
+          </a>
+          <a href="territorios.html" class="quick-nav-link">
+            <span style="font-size:16px">🗾</span>
+            <span>Comparativa territorial<br/><span style="font-size:9px;font-weight:400;color:var(--muted)">4 tipos de territorio</span></span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel indicadores -->
+    <div class="detail-panel reveal" id="detail-panel">
+      <div class="dp-hdr">
+        <h3 id="panel-title">DS1 — Padrón Nacional de Fallecidos</h3>
+        <span class="dp-sub" id="panel-sub">SINADEF · 2020–2024</span>
+      </div>
+      <div class="metrics-grid" id="panel-grid"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="ft-title">COVID-19 Perú · Estudio Comparativo Epidemiológico 2020–2024</div>
+    <div class="ft-university">Universidad César Vallejo · Escuela de Ingeniería de Sistemas</div>
+    <div class="ft-advisor">Asesor: <strong>Prof. M. Chávez Herrera</strong></div>
+    <div class="ft-team-label">Equipo investigador</div>
+    <div class="ft-team">
+      <a href="https://orcid.org/0009-0001-5290-4197" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Ttito Ulloa</a>
+      <a href="https://orcid.org/0009-0002-9994-5348" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Viera Ojeda</a>
+      <a href="https://orcid.org/0009-0005-4680-3567" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Córdova Aznaran</a>
+      <a href="https://orcid.org/0009-0003-2269-3434" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Campos Otaegui</a>
+      <a href="https://orcid.org/0009-0008-6090-768X" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Tejada Montes</a>
+      <a href="https://orcid.org/0009-0006-7442-1854" target="_blank" rel="noopener" class="ft-author"><svg class="orcid-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#A6CE39"/><path d="M8.5 7h1.2v10H8.5V7zm3.8 0h3.2c3 0 4.5 1.7 4.5 5s-1.5 5-4.5 5h-3.2V7zm1.2 1.2v7.6h1.9c2.2 0 3.3-1.3 3.3-3.8s-1.1-3.8-3.3-3.8h-1.9z" fill="#fff"/><circle cx="9.1" cy="5.2" r="1" fill="#fff"/></svg>Moreno Acosta</a>
+    </div>
+    <div class="ft-sources-label">Fuentes de datos oficiales</div>
+    <div class="ft-sources">
+      <a href="https://www.gob.pe/minsa" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#E07C1B"></span>MINSA</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/informaci%C3%B3n-de-fallecidos-del-sistema-nacional-de-defunciones-ministerio-de-salud" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#C04820"></span>SINADEF</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/casos-positivos-por-covid-19-ministerio-de-salud-minsa" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#F5B942"></span>NOTI-COVID</a>
+      <a href="https://covid19.minsa.gob.pe/sala_situacional.asp" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#2E7D4F"></span>SISCOVID</a>
+      <a href="https://www.datosabiertos.gob.pe/dataset/camas-hospitalarias-tb_camas_f500-ministerio-de-salud" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#1D8C6A"></span>TB_CAMAS_F500</a>
+      <a href="https://www.datosabiertos.gob.pe/group/datos-abiertos-de-covid-19" target="_blank" rel="noopener" class="ft-source-link"><span class="src-dot" style="background:#639922"></span>datos.gob.pe</a>
+    </div>
+    <div class="ft-copy">© 2026 Universidad César Vallejo · Todos los derechos reservados</div>
+  </div>
+</footer>
+
+<script>
+/* ── Dataset data ── */
+const DATA = {
+  1:{title:"DS1 — Padrón Nacional de Fallecidos",sub:"SINADEF · 2020–2024",metrics:[
+    {l:"Total fallecidos",v:"220,918"},{l:"Edad promedio",v:"66.4 años"},
+    {l:"Razón M/F",v:"1.71"},{l:"% masculinos",v:"63.1%"},
+    {l:"Lima (mayor impacto)",v:"96,461"},{l:"1ª Ola 2020",v:"43.2%"},
+    {l:"2ª Ola 2021",v:"48.9%"},{l:"Clasificaciones DEF",v:"9 valores"}]},
+  2:{title:"DS2 — Cajamarca 2020",sub:"DIRESA Cajamarca",metrics:[
+    {l:"Provincias cubiertas",v:"13"},{l:"Casos confirmados",v:"8,291"},
+    {l:"Fallecidos registrados",v:"6"},{l:"Recuperados",v:"3,438"},
+    {l:"Sospechosos",v:"registrados"},{l:"Cobertura temporal",v:"Año 2020"}]},
+  3:{title:"DS3 — Fallecidos SISCOVID",sub:"MINSA · variables clínicas",metrics:[
+    {l:"Registros totales",v:"2,028"},{l:"Hospitalizados",v:"91.5%"},
+    {l:"Fallec. en establec.",v:"93.2%"},{l:"Concentrado Tacna",v:"97.8%"},
+    {l:"Departamentos",v:"9"},{l:"Variables clínicas",v:"incluidas"}]},
+  4:{title:"DS4 — Padrón Vacunados NOTI-COVID",sub:"Tacna · feb 2021 – oct 2024",metrics:[
+    {l:"Total aplicaciones",v:"915,197"},{l:"Pfizer",v:"68.0%"},
+    {l:"Sinopharm",v:"20.6%"},{l:"AstraZeneca",v:"8.0%"},
+    {l:"Moderna",v:"3.4%"},{l:"Pico jul 2021",v:"103,507 dosis"},
+    {l:"Grupo 20–29 años",v:"16.4%"},{l:"Mujeres vacunadas",v:"50.6%"}]},
+  5:{title:"DS5 — Tablero Camas F500",sub:"MINSA · mar 2021 – dic 2023",metrics:[
+    {l:"Registros longitudinales",v:"510,883"},{l:"Establecimientos",v:"572"},
+    {l:"UCI nacionales",v:"156 camas"},{l:"Ventiladores totales",v:"401"},
+    {l:"Front. selváticos UCI",v:"18"},{l:"Altoandinos UCI",v:"34"},
+    {l:"Costa/Interior UCI",v:"93"},{l:"Regiones cubiertas",v:"25"}]}
+};
+
+const EASE = t => 1 - Math.pow(1-t, 4);
+
+function activate(n) {
+  [1,2,3,4,5].forEach(i => {
+    const c = document.getElementById('d'+i);
+    if(c) c.classList.remove('active');
+  });
+  document.getElementById('d'+n).classList.add('active');
+  const d = DATA[n];
+  document.getElementById('panel-title').textContent = d.title;
+  document.getElementById('panel-sub').textContent   = d.sub;
+  const grid = document.getElementById('panel-grid');
+  grid.style.cssText = 'opacity:0;transform:translateY(8px);transition:none';
+  setTimeout(() => {
+    grid.innerHTML = d.metrics.map((m,i) => `
+      <div class="metric" style="animation-delay:${i*.045}s">
+        <div class="metric-lbl">${m.l}</div>
+        <div class="metric-val" style="font-size:${m.v.length>12?'11px':'14px'}">${m.v}</div>
+      </div>`).join('');
+    requestAnimationFrame(() => {
+      grid.style.cssText = 'opacity:1;transform:translateY(0);transition:opacity .3s,transform .3s';
+    });
+  }, 140);
+}
+activate(1);
+
+/* Counters */
+function animCount(el) {
+  const target = +el.dataset.target;
+  const dur = 1800; const start = performance.now();
+  (function step(now){
+    const t = Math.min((now-start)/dur, 1);
+    el.textContent = Math.round(EASE(t)*target).toLocaleString('es-PE');
+    if(t < 1) requestAnimationFrame(step);
+  })(start);
+}
+setTimeout(() => document.querySelectorAll('.counter').forEach(animCount), 450);
+
+/* Scroll reveal */
+const ro = new IntersectionObserver(ee => {
+  ee.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); ro.unobserve(e.target); } });
+}, {threshold:.1});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+/* Map tooltip */
+const tooltip = document.getElementById('mapTooltip');
+document.querySelectorAll('.dep').forEach(dep => {
+  dep.addEventListener('mouseenter', () => {
+    tooltip.innerHTML = `<strong>${dep.dataset.name}</strong>Fallecidos: ${dep.dataset.falls||'—'}`;
+    tooltip.classList.add('show');
+  });
+  dep.addEventListener('mousemove', e => {
+    tooltip.style.left = (e.clientX+14)+'px';
+    tooltip.style.top  = (e.clientY-36)+'px';
+  });
+  dep.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+});
+</script>
+</body>
+</html>
