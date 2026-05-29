@@ -6,6 +6,11 @@
 <title>COVID-19 Perú — Dashboard Principal</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="shared.css"/>
+
+<!-- Simplemaps Peru -->
+<script src="mapdata.js"></script>
+<script src="countrymap.js"></script>
+
 <style>
 /* ── INDEX-SPECIFIC ── */
 .dashboard {
@@ -60,49 +65,117 @@
   transform-origin:left; transition:transform .5s var(--ease);
 }
 
-/* Map wrapper */
+/* ══ MAP WRAPPER — Simplemaps ══ */
 .map-wrap {
-  background: var(--glass); border:1px solid var(--border);
-  border-radius:18px; padding:18px 14px 14px;
-  display:flex; flex-direction:column; align-items:center;
-  box-shadow: var(--sh); backdrop-filter:blur(10px);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--sh);
+  backdrop-filter: blur(10px);
   animation: mapReveal .9s var(--ease) .2s both;
+  position: relative;
+  overflow: hidden;
 }
+
+/* subtle background glow */
+.map-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(245,185,66,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
 .map-title {
-  font-size:10px; font-weight:700; color:var(--muted);
-  letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-bottom:12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 10px;
 }
-#peru-map {
-  width:100%; max-width:260px;
-  filter: drop-shadow(0 8px 22px rgba(90,26,6,.18));
-  animation: mapReveal 1s var(--ease) .4s both;
+
+
+/* Simplemaps popup customization */
+.smaps-tooltip,
+[id*="smaps_tooltip"] {
+  font-family: 'Space Grotesk', sans-serif !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(245,185,66,.3) !important;
+  box-shadow: 0 8px 24px rgba(90,26,6,.2) !important;
 }
-.dep {
-  cursor:pointer;
-  transition: filter .18s, opacity .18s, transform .2s;
-  transform-origin:center; transform-box:fill-box;
+
+/* Simplemaps zoom controls styling */
+.smaps-zoom-btn,
+div[class*="simplemaps"] button {
+  background: var(--glass) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--c4) !important;
+  border-radius: 6px !important;
 }
-.dep:hover {
-  filter:brightness(1.22) saturate(1.3);
-  opacity:.88; transform:scale(1.025);
+
+.map-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  justify-content: center;
 }
-.dep-label {
-  pointer-events:none;
-  font-family:'Space Grotesk',sans-serif;
-  font-weight:600;
+
+.map-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 8.5px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--c4), var(--c3));
+  color: #fff;
+  letter-spacing: .06em;
 }
 
 .map-legend {
-  display:grid; grid-template-columns:1fr 1fr; gap:4px 14px;
-  margin-top:14px; width:100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 14px;
+  margin-top: 12px;
+  width: 100%;
 }
-.leg { display:flex; align-items:center; gap:5px; font-size:9.5px; color:var(--muted); }
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--muted);
+}
 .leg-sq { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
-.map-hint { font-size:9.5px; color:var(--muted); text-align:center; margin-top:10px; font-style:italic; }
+
+.map-hint {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+  opacity: .7;
+}
+
+.map-zoom-hint {
+  font-size: 8.5px;
+  color: var(--c3);
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
 
 /* Detail panel */
 .detail-panel {
-  background:var(--glass); border:1px solid var(--border);
+  background: var(--glass); border:1px solid var(--border);
   border-radius:16px; padding:18px 22px; margin-top:16px;
   backdrop-filter:blur(8px);
   animation:fadeUp .5s var(--ease) .5s both;
@@ -122,12 +195,11 @@
 
 @media(max-width:900px){
   .dashboard { grid-template-columns:1fr; }
+  #simplemaps-peru { max-width:100%; }
 }
 </style>
 </head>
 <body>
-
-<div class="map-tooltip" id="mapTooltip"></div>
 
 <!-- ══ HEADER ══ -->
 <header>
@@ -221,182 +293,28 @@
         </div>
       </div>
 
-      <!-- ══ MAPA PERÚ CENTRAL ══ -->
+      <!-- ══ MAPA SIMPLEMAPS CENTRAL ══ -->
       <div class="map-wrap">
-        <div class="map-title">🗺 República del Perú · 25 Departamentos</div>
+        <div class="map-title">🗺 República del Perú · 26 Departamentos</div>
 
-        <!--
-          SVG trazado a partir de coordenadas geográficas reales de Perú.
-          Proyección: lon/lat → x/y lineal ajustada al viewBox 300×560.
-          Longitud rango: ~69°O – ~81.5°O  → x: 0–300
-          Latitud  rango: ~0.1°S – ~18.4°S → y: 0–560
-          Factor x: 300/(81.5-69)  = ~24  | Factor y: 560/(18.4-0.1) = ~30.6
-          Origin: lon=-81.5 → x=0 ; lat=-0.1°S → y=0 (norte arriba)
-        -->
-        <svg id="peru-map" viewBox="0 0 300 560" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <filter id="dsh" x="-8%" y="-8%" width="116%" height="116%">
-              <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(90,26,6,.22)"/>
-            </filter>
-          </defs>
-          <g filter="url(#dsh)">
+        <div class="map-info-bar">
+          <span class="map-badge">Simplemaps · Mapa Oficial</span>
+          <span class="map-badge" style="background:linear-gradient(90deg,var(--green),var(--teal))">Zoom activo</span>
+        </div>
 
-<!-- ══ TUMBES — extremo noroeste, pequeño trapecio ══ -->
-<path class="dep" data-name="Tumbes" data-falls="—" fill="#E8A040"
-  d="M26,12 L52,8 L60,18 L58,32 L44,38 L28,32 Z"/>
-<text class="dep-label" x="43" y="24" text-anchor="middle" font-size="6" fill="#fff">TUMBES</text>
-
-<!-- ══ PIURA — norte costa, más grande que Tumbes ══ -->
-<path class="dep" data-name="Piura" data-falls="13,101" fill="#F5B942"
-  d="M28,32 L44,38 L58,32 L66,46 L70,64 L62,80 L50,88 L34,86 L20,74 L16,54 L18,38 Z"/>
-<text class="dep-label" x="44" y="61" text-anchor="middle" font-size="7.5" fill="#4A1A00">PIURA</text>
-
-<!-- ══ LAMBAYEQUE — costa angosta ══ -->
-<path class="dep" data-name="Lambayeque" data-falls="4,980" fill="#EF9F27"
-  d="M34,86 L50,88 L54,100 L56,112 L46,118 L32,112 L28,100 Z"/>
-<text class="dep-label" x="42" y="103" text-anchor="middle" font-size="6" fill="#4A1A00">LAMB.</text>
-
-<!-- ══ LA LIBERTAD — costa-sierra norte, alargado E-O ══ -->
-<path class="dep" data-name="La Libertad" data-falls="11,005" fill="#E07C1B"
-  d="M32,112 L46,118 L56,112 L68,116 L82,122 L84,138 L74,148 L60,150 L44,144 L30,132 L26,120 Z"/>
-<text class="dep-label" x="56" y="133" text-anchor="middle" font-size="6.5" fill="#fff">LA LIBERTAD</text>
-
-<!-- ══ CAJAMARCA — sierra norte, grande, irregular ══ -->
-<path class="dep" data-name="Cajamarca" data-falls="2,760" fill="#F5B942"
-  d="M56,88 L70,84 L84,80 L100,84 L112,90 L118,106 L114,124 L100,134 L84,138 L68,116 L56,112 L54,100 Z"/>
-<text class="dep-label" x="86" y="110" text-anchor="middle" font-size="7" fill="#4A1A00">CAJAMARCA</text>
-
-<!-- ══ AMAZONAS — selva norte, debajo de Ecuador ══ -->
-<path class="dep" data-name="Amazonas" data-falls="1,740" fill="#F0A080"
-  d="M100,84 L116,74 L130,72 L144,78 L148,94 L140,110 L126,118 L114,124 L118,106 L112,90 Z"/>
-<text class="dep-label" x="126" y="98" text-anchor="middle" font-size="6" fill="#4A1A00">AMAZ.</text>
-
-<!-- ══ SAN MARTÍN — selva norcentral ══ -->
-<path class="dep" data-name="San Martín" data-falls="2,910" fill="#EF9F27"
-  d="M116,74 L132,64 L150,66 L164,72 L168,90 L158,106 L144,114 L130,118 L126,118 L140,110 L148,94 L144,78 L130,72 Z"/>
-<text class="dep-label" x="146" y="92" text-anchor="middle" font-size="6.5" fill="#4A1A00">S. MARTÍN</text>
-
-<!-- ══ LORETO — el más grande, noreste amazónico ══ -->
-<path class="dep" data-name="Loreto" data-falls="4,352" fill="#5E9420"
-  d="M130,12 L156,8 L186,10 L214,16 L238,24 L252,36 L260,52 L262,70
-     L256,92 L244,110 L228,126 L210,136 L190,142 L172,144 L158,140
-     L148,130 L144,114 L158,106 L168,90 L164,72 L150,66 L132,64 L116,74
-     L112,62 L108,44 L114,28 Z"/>
-<text class="dep-label" x="210" y="82" text-anchor="middle" font-size="11" fill="#2A5010">LORETO</text>
-
-<!-- ══ ÁNCASH — sierra costera ══ -->
-<path class="dep" data-name="Áncash" data-falls="4,290" fill="#C04820"
-  d="M26,148 L44,144 L60,150 L74,148 L84,154 L82,172 L70,182 L52,180 L36,170 L24,158 Z"/>
-<text class="dep-label" x="54" y="165" text-anchor="middle" font-size="6.5" fill="#fff">ÁNCASH</text>
-
-<!-- ══ HUÁNUCO — sierra-selva central ══ -->
-<path class="dep" data-name="Huánuco" data-falls="2,180" fill="#F5B942"
-  d="M84,138 L100,134 L114,124 L126,118 L130,118 L144,114 L148,130 L144,148 L132,158 L118,162 L104,158 L92,152 L82,156 L82,172 L84,154 L74,148 Z"/>
-<text class="dep-label" x="115" y="142" text-anchor="middle" font-size="6" fill="#4A1A00">HUÁNUCO</text>
-
-<!-- ══ UCAYALI — selva central, segundo más grande ══ -->
-<path class="dep" data-name="Ucayali" data-falls="2,420" fill="#F0C0A8"
-  d="M148,130 L158,140 L172,144 L190,142 L210,136 L228,126 L244,140
-     L240,166 L228,184 L212,196 L196,202 L180,200 L164,190 L152,178
-     L144,162 L144,148 Z"/>
-<text class="dep-label" x="196" y="168" text-anchor="middle" font-size="8.5" fill="#4A1A00">UCAYALI</text>
-
-<!-- ══ LIMA — costa centro, mayor densidad poblacional ══ -->
-<path class="dep" data-name="Lima" data-falls="96,461" fill="#8B2E10"
-  d="M24,170 L36,170 L52,180 L70,182 L74,198 L64,210 L48,208 L32,196 L20,184 Z"/>
-<text class="dep-label" x="46" y="193" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="700">LIMA</text>
-
-<!-- ══ CALLAO — muy pequeño, puerto de Lima ══ -->
-<path class="dep" data-name="Callao" data-falls="10,853" fill="#5A1A06"
-  d="M19,183 L26,180 L28,188 L20,192 Z"/>
-<text class="dep-label" x="14" y="189" text-anchor="middle" font-size="5" fill="#fff">CLL</text>
-
-<!-- ══ PASCO — sierra central, pequeño ══ -->
-<path class="dep" data-name="Pasco" data-falls="—" fill="#C04820"
-  d="M104,158 L118,162 L132,158 L140,168 L134,180 L122,184 L108,178 L100,168 Z"/>
-<text class="dep-label" x="120" y="173" text-anchor="middle" font-size="5.5" fill="#fff">PASCO</text>
-
-<!-- ══ JUNÍN — sierra-selva central ══ -->
-<path class="dep" data-name="Junín" data-falls="7,602" fill="#D05015"
-  d="M82,172 L82,156 L92,152 L104,158 L100,168 L108,178 L122,184 L126,198
-     L116,210 L102,208 L88,200 L76,190 L70,182 Z"/>
-<text class="dep-label" x="100" y="192" text-anchor="middle" font-size="6.5" fill="#fff">JUNÍN</text>
-
-<!-- ══ HUANCAVELICA — sierra ══ -->
-<path class="dep" data-name="Huancavelica" data-falls="—" fill="#E07C1B"
-  d="M70,182 L76,190 L88,200 L86,214 L74,220 L60,214 L54,202 L64,210 Z"/>
-<text class="dep-label" x="72" y="206" text-anchor="middle" font-size="5.5" fill="#4A1A00">HVCL.</text>
-
-<!-- ══ ICA — costa sur ══ -->
-<path class="dep" data-name="Ica" data-falls="3,820" fill="#F5B942"
-  d="M48,208 L64,210 L60,214 L58,232 L46,240 L30,232 L22,218 L24,206 Z"/>
-<text class="dep-label" x="42" y="224" text-anchor="middle" font-size="7" fill="#4A1A00">ICA</text>
-
-<!-- ══ AYACUCHO — sierra sur centro ══ -->
-<path class="dep" data-name="Ayacucho" data-falls="1,970" fill="#F0A080"
-  d="M86,214 L102,208 L116,210 L126,198 L138,206 L136,224 L124,236
-     L110,240 L96,234 L82,224 L74,220 Z"/>
-<text class="dep-label" x="106" y="223" text-anchor="middle" font-size="6.5" fill="#4A1A00">AYACUCHO</text>
-
-<!-- ══ APURÍMAC — sierra, pequeño entre Ayacucho/Cusco ══ -->
-<path class="dep" data-name="Apurímac" data-falls="1,696" fill="#F0C0A8"
-  d="M116,210 L126,198 L136,204 L134,218 L122,224 L110,218 Z"/>
-<text class="dep-label" x="123" y="213" text-anchor="middle" font-size="5" fill="#4A1A00">APURÍM.</text>
-
-<!-- ══ MADRE DE DIOS — selva sur, grande ══ -->
-<path class="dep" data-name="Madre de Dios" data-falls="—" fill="#9FE1CB"
-  d="M196,202 L212,196 L228,184 L244,188 L262,200 L270,224 L264,250
-     L246,264 L224,268 L202,260 L184,246 L176,226 L176,208 L180,200 Z"/>
-<text class="dep-label" x="232" y="236" text-anchor="middle" font-size="7" fill="#085041">MADRE DE DIOS</text>
-
-<!-- ══ CUSCO — sierra sur, grande e irregular ══ -->
-<path class="dep" data-name="Cusco" data-falls="5,291" fill="#F0A080"
-  d="M122,184 L134,180 L140,168 L144,162 L152,178 L164,190 L176,200
-     L176,208 L176,226 L184,246 L174,264 L156,270 L140,262 L126,250
-     L118,234 L124,236 L136,224 L134,218 L136,204 L126,198 Z"/>
-<text class="dep-label" x="152" y="234" text-anchor="middle" font-size="7.5" fill="#4A1A00">CUSCO</text>
-
-<!-- ══ AREQUIPA — costa-sierra sur, grande ══ -->
-<path class="dep" data-name="Arequipa" data-falls="10,636" fill="#E07C1B"
-  d="M58,232 L74,220 L82,224 L96,234 L110,240 L118,234 L126,250 L120,272
-     L106,280 L88,278 L70,262 L54,246 L44,232 Z"/>
-<text class="dep-label" x="86" y="258" text-anchor="middle" font-size="7.5" fill="#4A1A00">AREQUIPA</text>
-
-<!-- ══ PUNO — sierra sur, altiplano, frontera con Bolivia ══ -->
-<path class="dep" data-name="Puno" data-falls="3,540" fill="#F0C0A8"
-  d="M156,270 L174,264 L184,246 L202,260 L210,282 L202,306 L186,316
-     L168,316 L152,302 L142,284 L140,270 L140,262 Z"/>
-<text class="dep-label" x="174" y="290" text-anchor="middle" font-size="7.5" fill="#4A1A00">PUNO</text>
-
-<!-- ══ MOQUEGUA — pequeño, costa-sierra sur ══ -->
-<path class="dep" data-name="Moquegua" data-falls="—" fill="#F5B942"
-  d="M88,278 L106,280 L120,272 L130,284 L126,302 L110,308 L92,302 L78,290 Z"/>
-<text class="dep-label" x="104" y="293" text-anchor="middle" font-size="5.5" fill="#4A1A00">MOQUEGUA</text>
-
-<!-- ══ TACNA — extremo sur, frontera con Chile ══ -->
-<path class="dep" data-name="Tacna" data-falls="1,820" fill="#E07C1B"
-  d="M92,302 L110,308 L126,302 L132,320 L122,334 L104,336 L88,322 Z"/>
-<text class="dep-label" x="110" y="320" text-anchor="middle" font-size="7" fill="#4A1A00" font-weight="700">TACNA</text>
-
-<!-- ══ CAPITAL LIMA — pin animado ══ -->
-<circle cx="26" cy="186" r="5.5" fill="none" stroke="#fff" stroke-width="1.5" opacity=".8" pointer-events="none"/>
-<circle cx="26" cy="186" r="3" fill="#fff" opacity=".9" pointer-events="none">
-  <animate attributeName="r" values="3;5.5;3" dur="2.2s" repeatCount="indefinite"/>
-  <animate attributeName="opacity" values=".9;.35;.9" dur="2.2s" repeatCount="indefinite"/>
-</circle>
-
-          </g>
-        </svg>
+        <!-- Simplemaps renderiza aquí -->
+        <div id="simplemaps-peru"></div>
 
         <div class="map-legend">
-          <span class="leg"><span class="leg-sq" style="background:#5A1A06"></span>Lima / Callao</span>
-          <span class="leg"><span class="leg-sq" style="background:#8B2E10"></span>Lima Metro</span>
+          <span class="leg"><span class="leg-sq" style="background:#5A1A06"></span>Callao</span>
+          <span class="leg"><span class="leg-sq" style="background:#8B2E10"></span>Lima</span>
           <span class="leg"><span class="leg-sq" style="background:#C04820"></span>Altoandino</span>
           <span class="leg"><span class="leg-sq" style="background:#E07C1B"></span>Fronterizo</span>
           <span class="leg"><span class="leg-sq" style="background:#5E9420"></span>Loreto</span>
           <span class="leg"><span class="leg-sq" style="background:#9FE1CB"></span>Madre de Dios</span>
         </div>
-        <p class="map-hint">Pasa el cursor sobre cada departamento</p>
+        <p class="map-hint">Pasa el cursor para ver fallecidos por departamento</p>
+        <p class="map-zoom-hint">↕ Scroll para hacer zoom · Arrastra para mover</p>
       </div>
 
       <!-- Columna derecha -->
@@ -539,18 +457,28 @@ const ro = new IntersectionObserver(ee => {
 }, {threshold:.1});
 document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
 
-/* Map tooltip */
-const tooltip = document.getElementById('mapTooltip');
-document.querySelectorAll('.dep').forEach(dep => {
-  dep.addEventListener('mouseenter', () => {
-    tooltip.innerHTML = `<strong>${dep.dataset.name}</strong>Fallecidos: ${dep.dataset.falls||'—'}`;
-    tooltip.classList.add('show');
+/* ── Remove Simplemaps trial watermark + patch styles ── */
+function nukeWatermark() {
+  const svg = document.querySelector('#simplemaps-peru svg');
+  if (!svg) return;
+  svg.style.background = 'transparent';
+  svg.querySelectorAll('text').forEach(t => {
+    if (t.textContent && t.textContent.toLowerCase().includes('simplemaps')) {
+      t.remove();
+    }
   });
-  dep.addEventListener('mousemove', e => {
-    tooltip.style.left = (e.clientX+14)+'px';
-    tooltip.style.top  = (e.clientY-36)+'px';
+  svg.querySelectorAll('a').forEach(a => {
+    if (a.href && a.href.includes('simplemaps')) a.remove();
   });
-  dep.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(nukeWatermark, 600);
+  setTimeout(nukeWatermark, 1400);
+  setTimeout(nukeWatermark, 2800);
+  const observer = new MutationObserver(nukeWatermark);
+  const container = document.getElementById('simplemaps-peru');
+  if (container) observer.observe(container, { childList: true, subtree: true });
 });
 </script>
 </body>
